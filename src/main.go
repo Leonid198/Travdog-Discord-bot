@@ -15,7 +15,7 @@ var (
 	Token string
 	DmID string
 	BannedWordsFileName string
-	BannedWords string
+	BannedWords []string
 )
 
 func init() {
@@ -34,9 +34,11 @@ func main() {
 
 	bannedWordsReader := csv.NewReader(bannedWordsFile)
 
-	BannedWords, err := bannedWordsReader.ReadAll()
-
-	fmt.Println(BannedWords)
+	BannedWords, err = bannedWordsReader.Read()
+	if err != nil {
+		fmt.Println("error reading banned words file,", err)
+		return
+	}
 
 	discord, err := discordgo.New("Bot " + Token)
 	if err != nil {
@@ -67,7 +69,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		err := s.ChannelMessageDelete(m.ChannelID, m.ID)
 		if err != nil {
 			fmt.Println("error deleting message,", err)
-			errMessage :=fmt.Sprintf("Travdog Error: Error deleting message,", err)
+			errMessage := fmt.Sprintf("Travdog Error: Error deleting message,", err)
 			s.ChannelMessageSend(m.ID, errMessage)
 			return
 		}

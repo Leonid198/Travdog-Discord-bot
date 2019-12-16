@@ -15,7 +15,7 @@ var (
 	Token string
 	DmID string
 	BannedWordsFileName string
-	BannedWords []string
+	BannedWords [][]string
 )
 
 func init() {
@@ -33,15 +33,18 @@ func main() {
 	}
 
 	bannedWordsReader := csv.NewReader(bannedWordsFile)
+	bannedWordsReader.FieldsPerRecord = -1
 
-	BannedWords, err = bannedWordsReader.Read()
+	BannedWords, err = bannedWordsReader.ReadAll()
 	if err != nil {
 		fmt.Println("error reading banned words file,", err)
 		return
 	}
 
-	for i, word := range BannedWords {
-		BannedWords[i] = strings.ToUpper(word)
+	for ci, line := range BannedWords {
+		for ri, word := range line {
+			BannedWords[ci][ri] = strings.ToUpper(word)
+		}
 	}
 
 	discord, err := discordgo.New("Bot " + Token)
@@ -82,9 +85,11 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 func checkWords (message string) bool {
 	message = strings.ToUpper(message)
-	for _, word := range BannedWords {
-		if strings.Contains(message, string(word)) {
-			return true
+	for _, line := range BannedWords {
+		for _, word := range line {
+			if strings.Contains(message, string(word)) {
+				return true
+			}
 		}
 	}
 	return false

@@ -1,1 +1,3 @@
-A1,A2
+bannedWord,wordBanned
+Make sure all the banned words are on the first line of the file
+TODO: Allow any arrangement of banned words.

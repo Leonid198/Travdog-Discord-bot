@@ -40,6 +40,10 @@ func main() {
 		return
 	}
 
+	for i, word := range BannedWords {
+		BannedWords[i] = strings.ToUpper(word)
+	}
+
 	discord, err := discordgo.New("Bot " + Token)
 	if err != nil {
 		fmt.Println("error creating Discord session,", err)
@@ -77,6 +81,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 }
 
 func checkWords (message string) bool {
+	message = strings.ToUpper(message)
 	for _, word := range BannedWords {
 		if strings.Contains(message, string(word)) {
 			return true

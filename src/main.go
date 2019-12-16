@@ -1,9 +1,84 @@
 package main
 
-import "fmt" 
-import "github.com/bwmarrin/discordgo"
+import (
+	"encoding/csv"
+	"flag"
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"strings"
+	"github.com/bwmarrin/discordgo"
+)
+
+var (
+	Token string
+	DmID string
+	BannedWordsFileName string
+	BannedWords string
+)
+
+func init() {
+	flag.StringVar(&Token, "t", "", "Bot Token")
+	flag.StringVar(&DmID, "d", "", "DM ID")
+	flag.StringVar(&BannedWordsFileName, "w", "bannedWords.csv", "Banned Words File")
+	flag.Parse()
+}
 
 func main() {
-	discord, err := discordgo.New("Bot " + "authToken")
+	bannedWordsFile, err := os.Open(BannedWordsFileName)
+	if err != nil {
+		fmt.Println("error opening banned words file,", err)
+		return
+	}
+
+	bannedWordsReader := csv.NewReader(bannedWordsFile)
+
+	BannedWords, err := bannedWordsReader.ReadAll()
+
+	fmt.Println(BannedWords)
+
+	discord, err := discordgo.New("Bot " + Token)
+	if err != nil {
+		fmt.Println("error creating Discord session,", err)
+		return
+	}
 	
+	discord.AddHandler(messageCreate)
+	err = discord.Open()
+	if err != nil {
+		fmt.Println("error opening connection,", err)
+		return
+	}
+
+	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
+	kill := make(chan os.Signal, 1)
+	signal.Notify(kill, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
+	<-kill
+
+	discord.Close()
+}
+
+func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+	if m.Author.ID == s.State.User.ID {
+		return
+	}
+	if checkWords(m.Content) {
+		err := s.ChannelMessageDelete(m.ChannelID, m.ID)
+		if err != nil {
+			fmt.Println("error deleting message,", err)
+			errMessage :=fmt.Sprintf("Travdog Error: Error deleting message,", err)
+			s.ChannelMessageSend(m.ID, errMessage)
+			return
+		}
+	}
+}
+
+func checkWords (message string) bool {
+	for _, word := range BannedWords {
+		if strings.Contains(message, string(word)) {
+			return true
+		}
+	}
+	return false
 }

@@ -54,6 +54,7 @@ func main() {
 	}
 	
 	discord.AddHandler(messageCreate)
+	discord.AddHandler(messageUpdate)
 	err = discord.Open()
 	if err != nil {
 		fmt.Println("error opening connection,", err)
@@ -77,7 +78,19 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if err != nil {
 			fmt.Println("error deleting message,", err)
 			errMessage := fmt.Sprintf("Travdog Error: Error deleting message,", err)
-			s.ChannelMessageSend(m.ID, errMessage)
+			s.ChannelMessageSend(DmID, errMessage)
+			return
+		}
+	}
+}
+
+func messageUpdate(s *discordgo.Session, m *discordgo.MessageUpdate) {
+	if checkWords(m.Content) {
+		err := s.ChannelMessageDelete(m.ChannelID, m.ID)
+		if err != nil {
+			fmt.Println("error deleting message,", err)
+			errMessage := fmt.Sprintf("Travdog Error: Error deleting message,", err)
+			s.ChannelMessageSend(DmID, errMessage)
 			return
 		}
 	}

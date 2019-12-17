@@ -70,40 +70,25 @@ func main() {
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
-	if m.Author.ID == s.State.User.ID {
-		return
-	}
-	if checkWords(m.Content) {
-		err := s.ChannelMessageDelete(m.ChannelID, m.ID)
-		if err != nil {
-			fmt.Println("error deleting message,", err)
-			errMessage := fmt.Sprintf("Travdog Error: Error deleting message,", err)
-			s.ChannelMessageSend(DmID, errMessage)
-			return
-		}
-	}
+	checkWords(s, m.Message)
 }
 
 func messageUpdate(s *discordgo.Session, m *discordgo.MessageUpdate) {
-	if checkWords(m.Content) {
-		err := s.ChannelMessageDelete(m.ChannelID, m.ID)
-		if err != nil {
-			fmt.Println("error deleting message,", err)
-			errMessage := fmt.Sprintf("Travdog Error: Error deleting message,", err)
-			s.ChannelMessageSend(DmID, errMessage)
-			return
-		}
-	}
+	checkWords(s, m.Message)
 }
 
-func checkWords (message string) bool {
-	message = strings.ToUpper(message)
+func checkWords (s *discordgo.Session, m *discordgo.Message) {
+	message := strings.ToUpper(m.Content)
 	for _, line := range BannedWords {
 		for _, word := range line {
 			if strings.Contains(message, string(word)) {
-				return true
+				err := s.ChannelMessageDelete(m.ChannelID, m.ID)
+				if err != nil {
+					fmt.Println("error deleting message,", err)
+					errMessage := fmt.Sprintf("Travdog Error: Error deleting message,", err)
+					s.ChannelMessageSend(DmID, errMessage)
+				}
 			}
 		}
 	}
-	return false
 }

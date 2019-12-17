@@ -15,7 +15,7 @@ var (
 	Token string
 	DmID string
 	BannedWordsFileName string
-	BannedWords []string
+	BannedWords [][]string
 )
 
 func init() {
@@ -33,15 +33,18 @@ func main() {
 	}
 
 	bannedWordsReader := csv.NewReader(bannedWordsFile)
+	bannedWordsReader.FieldsPerRecord = -1
 
-	BannedWords, err = bannedWordsReader.Read()
+	BannedWords, err = bannedWordsReader.ReadAll()
 	if err != nil {
 		fmt.Println("error reading banned words file,", err)
 		return
 	}
 
-	for i, word := range BannedWords {
-		BannedWords[i] = strings.ToUpper(word)
+	for ci, line := range BannedWords {
+		for ri, word := range line {
+			BannedWords[ci][ri] = strings.ToUpper(word)
+		}
 	}
 
 	discord, err := discordgo.New("Bot " + Token)
@@ -51,6 +54,7 @@ func main() {
 	}
 	
 	discord.AddHandler(messageCreate)
+	discord.AddHandler(messageUpdate)
 	err = discord.Open()
 	if err != nil {
 		fmt.Println("error opening connection,", err)
@@ -66,26 +70,25 @@ func main() {
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
-	if m.Author.ID == s.State.User.ID {
-		return
-	}
-	if checkWords(m.Content) {
-		err := s.ChannelMessageDelete(m.ChannelID, m.ID)
-		if err != nil {
-			fmt.Println("error deleting message,", err)
-			errMessage := fmt.Sprintf("Travdog Error: Error deleting message,", err)
-			s.ChannelMessageSend(m.ID, errMessage)
-			return
-		}
-	}
+	checkWords(s, m.Message)
 }
 
-func checkWords (message string) bool {
-	message = strings.ToUpper(message)
-	for _, word := range BannedWords {
-		if strings.Contains(message, string(word)) {
-			return true
+func messageUpdate(s *discordgo.Session, m *discordgo.MessageUpdate) {
+	checkWords(s, m.Message)
+}
+
+func checkWords (s *discordgo.Session, m *discordgo.Message) {
+	message := strings.ToUpper(m.Content)
+	for _, line := range BannedWords {
+		for _, word := range line {
+			if strings.Contains(message, string(word)) {
+				err := s.ChannelMessageDelete(m.ChannelID, m.ID)
+				if err != nil {
+					fmt.Println("error deleting message,", err)
+					errMessage := fmt.Sprintf("Travdog Error: Error deleting message,", err)
+					s.ChannelMessageSend(DmID, errMessage)
+				}
+			}
 		}
 	}
-	return false
 }
